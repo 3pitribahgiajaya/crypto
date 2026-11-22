@@ -1,26 +1,26 @@
 # BEN AI — Multi-chain Trading Assistant
 
-A static, GitHub Pages-compatible dashboard for market snapshots, read-only wallet monitoring, and manual trade planning.
+Static GitHub Pages dashboard for market monitoring, rule-based technical indicators, read-only wallet monitoring and manual trade planning.
 
-## Current scope
-- Market snapshot via CoinGecko public endpoint (rate limits and availability apply).
-- Optional wallet connection through an injected EIP-1193 provider.
-- Native balance reads on Ethereum, Polygon, Arbitrum One, Base, and BNB Smart Chain.
-- Long trade risk/reward calculator.
-- No transaction signing, token approvals, custody, automatic orders, or broker execution.
+## Features
+- CoinGecko public market snapshot for BTC, ETH, BNB, POL and SOL.
+- Experimental rule-based bias using RSI(14), EMA(20), EMA(50) on 30-day market history for BTC, ETH and BNB.
+- Browser notifications while the page is open (not background push).
+- EIP-1193 wallet connection and native balance reads for Ethereum, Polygon, Arbitrum One, Base and BNB Smart Chain.
+- LONG/SHORT risk calculator with maximum configured risk of 5%.
+- Local-only portfolio journal using browser localStorage.
+- Basic PWA manifest and service worker cache.
 
-## Run
-Open `index.html` through GitHub Pages or a local static web server. A compatible wallet browser is needed for wallet monitoring.
+## Publish
+GitHub Actions deploys the root directory to GitHub Pages. Expected URL: https://3pitribahgiajaya.github.io/crypto/
 
-## Publish with GitHub Pages
-In repository Settings → Pages, choose **Deploy from a branch**, select `main` and folder `/(root)`, then Save. Wait for the Pages deployment workflow to finish. Site URL is normally `https://3pitribahgiajaya.github.io/crypto/`.
+## Important limitations
+- Signals are transparent technical heuristics, not machine-learning predictions, guaranteed outcomes, or personalized investment advice.
+- Public market APIs may rate-limit or be delayed.
+- Notifications require the page to remain open; no server-side push service is configured.
+- Ajaib account/API integration is not implemented or verified. The journal is manual and local only.
+- Wallet integration requires an injected EIP-1193 provider. Mobile browsers without an injected wallet cannot connect.
+- No transaction signing, token approvals, swaps, broker orders, or automated trading.
 
-## Security model
-- Never enter or paste a seed phrase or private key into this site.
-- The wallet connection only requests account access and reads the native balance.
-- No API secrets or private keys are included in the frontend.
-- External dependencies/data providers are loaded from public endpoints; verify providers before use.
-- Treat all market data as informational, not execution quotes.
-- This project is not financial advice. Trading can result in loss.
-
-See [SECURITY.md](SECURITY.md).
+## Security
+Never enter a seed phrase, private key, password, OTP, exchange API key, or GitHub token into this site. Do not add secrets to this public repository. See SECURITY.md.
