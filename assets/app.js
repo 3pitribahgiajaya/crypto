@@ -13,4 +13,25 @@ async function switchChain(){if(!window.ethereum){$("walletInfo").textContent="W
 function calculate(){let c=+$("capital").value,e=+$("entry").value,t=+$("target").value,s=+$("stop").value,r=+$("risk").value,o=$("calcResult");if(!(c>0&&e>0&&t>0&&s>0&&r>0&&r<=5)){o.textContent="Isi angka positif. Risk dibatasi maksimal 5%.";return}let long=t>e&&s<e,short=t<e&&s>e;if(!long&&!short){o.textContent="Untuk LONG: SL < entry < TP. Untuk SHORT: TP < entry < SL.";return}let riskUsd=c*r/100,qty=riskUsd/Math.abs(e-s),notional=qty*e,reward=qty*Math.abs(t-e),rr=Math.abs(t-e)/Math.abs(e-s);o.innerHTML="Arah: <b>"+(long?"LONG":"SHORT")+"</b><br>Ukuran posisi: <b>"+fmt(qty,8)+" unit</b><br>Nilai posisi: <b>"+usd(notional)+"</b><br>Risiko terencana: <b>"+usd(riskUsd)+"</b><br>Potensi target: <b>"+usd(reward)+"</b><br>Risk/reward: <b>1 : "+fmt(rr,2)+"</b><small> Tidak termasuk fee, spread, slippage, funding dan gap.</small>"}
 function loadPortfolio(){let arr=[];try{arr=JSON.parse(localStorage.getItem("benai_positions")||"[]")}catch{}$("portfolio").innerHTML=arr.length?arr.map((p,i)=>'<div class="signal-row"><div><b>'+p.asset+'</b><small class="muted">Avg IDR '+fmt(p.avg)+' · Qty '+fmt(p.qty,8)+'</small></div><button class="ghost" data-del="'+i+'">Delete</button></div>').join(""):"Belum ada catatan posisi.";document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{arr.splice(+b.dataset.del,1);localStorage.setItem("benai_positions",JSON.stringify(arr));loadPortfolio()})}
 function savePosition(){let asset=$("assetName").value.trim().toUpperCase(),avg=+$("avgPrice").value,qty=+$("units").value;if(!/^[A-Z0-9._-]{2,16}$/.test(asset)||!(avg>0&&qty>0)){$("portfolio").textContent="Isi ticker 2–16 karakter, average price dan quantity yang valid.";return}let a=JSON.parse(localStorage.getItem("benai_positions")||"[]");a.push({asset,avg,qty,created:new Date().toISOString()});localStorage.setItem("benai_positions",JSON.stringify(a));loadPortfolio()}
-$("refreshMarket").onclick=loadMarket;$("connectWallet").onclick=connectWallet;$("switchChain").onclick=switchChain;$("calculate").onclick=calculate;$("savePosition").onclick=savePosition;$("enableAlerts").onclick=async()=>{if(!("Notification"in window)){$("alertStatus").textContent="Browser tidak mendukung notifikasi.";return}let p=await Notification.requestPermission();alertEnabled=p==="granted";$("alertStatus").textContent=alertEnabled?"Alert browser aktif selama halaman terbuka.":"Izin notifikasi tidak diberikan."};loadPortfolio();loadMarket();if(window.ethereum){window.ethereum.on?.("chainChanged",connectWallet);window.ethereum.on?.("accountsChanged",connectWallet)}if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+function initApp(){
+  const bind=(id,event,fn)=>{const el=$(id);if(el)el.addEventListener(event,fn)};
+  bind("refreshMarket","click",loadMarket);
+  bind("connectWallet","click",connectWallet);
+  bind("switchChain","click",switchChain);
+  bind("calculate","click",calculate);
+  bind("savePosition","click",savePosition);
+  bind("enableAlerts","click",async()=>{
+    if(!("Notification" in window)){const s=$("alertStatus");if(s)s.textContent="Browser tidak mendukung notifikasi.";return}
+    let p=await Notification.requestPermission();alertEnabled=p==="granted";
+    const s=$("alertStatus");if(s)s.textContent=alertEnabled?"Alert browser aktif selama halaman terbuka.":"Izin notifikasi tidak diberikan.";
+  });
+  loadPortfolio();
+  loadMarket();
+  if(window.ethereum){
+    window.ethereum.on?.("chainChanged",connectWallet);
+    window.ethereum.on?.("accountsChanged",connectWallet);
+  }
+  if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initApp,{once:true});
+else initApp();
