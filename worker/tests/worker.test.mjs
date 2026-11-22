@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { webcrypto } from "node:crypto";
 import worker from "../index.js";
 
 const env = {
@@ -14,10 +13,8 @@ const env = {
 const auth = {Authorization:"Bearer test-dashboard-token","Content-Type":"application/json"};
 const request = (path, body, headers=auth) => new Request("https://worker.test"+path,{method:body?"POST":"GET",headers,body:body?JSON.stringify(body):undefined});
 const originalFetch = globalThis.fetch;
-const originalCrypto = globalThis.crypto;
 
-test.beforeEach(() => { globalThis.crypto=webcrypto; });
-test.afterEach(() => { globalThis.fetch=originalFetch; globalThis.crypto=originalCrypto; });
+test.afterEach(() => { globalThis.fetch=originalFetch; });
 
 test("health reports approval required and withdrawals disabled", async () => {
   const r=await worker.fetch(new Request("https://worker.test/health"),env);
