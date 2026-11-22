@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#081426"><meta name="description" content="BEN AI — read-only multi-chain market and wallet dashboard">
+  <title>BEN AI · Multi-chain Trading Assistant</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+<header class="top"><a class="brand" href="./"><span class="mark">B</span><span>BEN <b>AI</b><small>TRADING ASSISTANT</small></span></a><span class="pill safe">● READ-ONLY / NON-CUSTODIAL</span></header>
+<main>
+<section class="hero"><div><p class="eyebrow">MULTI-CHAIN INTELLIGENCE</p><h1>Market clarity.<br><em>Wallet security first.</em></h1><p class="muted">Pantau pasar dan saldo wallet tanpa menyerahkan private key atau seed phrase.</p></div><div class="hero-stat"><span>MODE</span><strong>TRADING ASSISTANT</strong><small>Manual confirmation required</small></div></section>
+<section class="grid">
+<article class="panel"><div class="panel-head"><h2>Market snapshot</h2><button id="refreshMarket" class="ghost">Refresh</button></div><div id="market" class="market"><p class="muted">Memuat harga pasar…</p></div><p id="marketStatus" class="hint">Data indikatif dari CoinGecko; bukan harga eksekusi broker.</p></article>
+<article class="panel"><div class="panel-head"><h2>Wallet monitor</h2><span class="tag">Non-custodial</span></div><p class="muted">Hubungkan wallet untuk membaca alamat dan saldo native. Aplikasi tidak meminta seed phrase/private key.</p><button id="connectWallet" class="primary">Connect wallet</button><div id="walletInfo" class="wallet-info">Wallet belum terhubung.</div><label for="chainSelect">Network</label><select id="chainSelect"><option value="1">Ethereum</option><option value="137">Polygon</option><option value="42161">Arbitrum One</option><option value="8453">Base</option><option value="56">BNB Smart Chain</option></select><button id="switchChain" class="ghost">Switch network in wallet</button></article>
+<article class="panel"><div class="panel-head"><h2>Trading calculator</h2><span class="tag">Planning only</span></div><label for="capital">Modal (USD)</label><input id="capital" type="number" min="0" step="0.01" value="100"><div class="two"><div><label for="entry">Entry price</label><input id="entry" type="number" min="0" step="any" placeholder="0"></div><div><label for="target">Target price</label><input id="target" type="number" min="0" step="any" placeholder="0"></div></div><div class="two"><div><label for="stop">Stop loss</label><input id="stop" type="number" min="0" step="any" placeholder="0"></div><div><label for="risk">Risk (%)</label><input id="risk" type="number" min="0.1" max="100" step="0.1" value="1"></div></div><button id="calculate" class="primary">Calculate plan</button><div id="calcResult" class="result">Masukkan entry, target, dan stop loss.</div></article>
+<article class="panel"><div class="panel-head"><h2>Security checklist</h2><span class="tag green">Enabled by design</span></div><ul class="checks"><li>Private key / seed phrase tidak diminta.</li><li>Tidak ada auto-trading atau transaksi otomatis.</li><li>Wallet hanya digunakan untuk read-only balance.</li><li>Tidak ada API secret di browser.</li><li>Trading plan harus dikonfirmasi manual di platform resmi.</li></ul></article>
+</section>
+<footer><p>BEN AI · Experimental software. Bukan nasihat keuangan. Periksa jaringan, alamat, likuiditas, biaya, dan risiko sebelum transaksi.</p><p><a href="SECURITY.md">Security</a> · <a href="README.md">Documentation</a> · <a href="https://github.com/3pitribahgiajaya/crypto">GitHub</a></p></footer>
+</main>
+</body></html>
