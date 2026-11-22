@@ -1,0 +1,12 @@
+name = "ben-ai-indodax"
+main = "index.js"
+compatibility_date = "2026-11-22"
+
+[vars]
+BEN_LIVE_TRADING_ENABLED = "false"
+BEN_MAX_ORDER_QTY = "0.0001"
+
+# Add secrets with: npx wrangler secret put INDODAX_API_KEY
+# npx wrangler secret put INDODAX_API_SECRET
+# npx wrangler secret put BEN_DASH_TOKEN
+# Never commit API secrets to this repository.
