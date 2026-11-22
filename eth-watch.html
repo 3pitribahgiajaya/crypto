@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#081426"><title>BEN AI ETH/IDR Watch</title>
+<style>
+:root{color-scheme:dark;--bg:#081426;--panel:#10213a;--line:#263d5b;--text:#edf4ff;--muted:#9fb1ca;--green:#16c784;--red:#ea5455;--blue:#39a9e8;--gold:#f5c542}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px system-ui,Arial,sans-serif;padding:20px;max-width:900px;margin:auto}
+a{color:#6cc8ff}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.brand{font-weight:800;font-size:20px}.pill{border:1px solid var(--line);border-radius:30px;padding:7px 12px;color:var(--green);font-size:12px}
+h1{font-size:clamp(28px,6vw,42px);margin:28px 0 5px}p{color:var(--muted);line-height:1.5}.price{font-size:clamp(30px,7vw,48px);font-weight:800;margin:12px 0}.change{color:var(--green);font-weight:700}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}.card h2{font-size:15px;color:var(--muted);margin:0 0 10px}.value{font-size:25px;font-weight:800}.buy{color:var(--green)}.tp{color:var(--gold)}.small{font-size:13px;color:var(--muted)}button{border:0;border-radius:10px;padding:13px 16px;font-weight:700;background:#168bca;color:white;font-size:15px;cursor:pointer}button.secondary{background:#263d5b}button:disabled{opacity:.5}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.status{padding:12px;border-radius:10px;background:#142b48;margin-top:14px}.warn{color:#ffd166}.log{font-size:14px;line-height:1.7}.footer{font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:14px}
+</style></head>
+<body>
+<header class="top"><a class="brand" href="./">← BEN AI</a><span class="pill">ETH/IDR · MONITORING</span></header>
+<h1>Ethereum Watch</h1><p>Harga publik INDODAX untuk pemantauan ETH/IDR. Data bukan harga eksekusi Ajaib.</p>
+<section class="card"><h2>HARGA ETH/IDR TERKINI</h2><div id="price" class="price">Memuat…</div><div id="updated" class="small">Menunggu data ticker publik</div><div id="marketState" class="status">Menganalisis level harga…</div></section>
+<section class="grid">
+ <article class="card"><h2>AREA BELI 1</h2><div class="value buy">Rp30.500.000</div><p>Entry bertahap hanya setelah harga stabil dan ada konfirmasi pantulan.</p></article>
+ <article class="card"><h2>AREA BELI 2</h2><div class="value buy">Rp30.000.000</div><p>Area akumulasi kedua; bukan instruksi order otomatis.</p></article>
+ <article class="card"><h2>TAKE PROFIT 1</h2><div class="value tp">Rp33.000.000</div><p>Target pertama. Periksa posisi dan konfirmasi jual manual.</p></article>
+ <article class="card"><h2>TAKE PROFIT 2</h2><div class="value tp">Rp35.150.000</div><p>Target kedua. Gunakan fitur resmi Ajaib bila tersedia.</p></article>
+ <article class="card"><h2>TAKE PROFIT 3</h2><div class="value tp">Rp38.000.000</div><p>Target lanjutan; bukan jaminan harga tercapai.</p></article>
+ <article class="card"><h2>BATASAN RISIKO</h2><div class="value">Manual</div><p>Tidak memasang SL otomatis. Tidak mengirim order dan tidak menjual aset tanpa persetujuan.</p></article>
+</section>
+<div class="actions"><button id="enable">Aktifkan notifikasi HP/browser</button><button id="refresh" class="secondary">Refresh harga</button></div>
+<div class="card" style="margin-top:16px"><h2>LOG SINYAL</h2><div id="log" class="log">Belum ada sinyal.</div></div>
+<p class="footer">Pembaruan setiap 60 detik selama halaman terbuka. Notifikasi browser memerlukan izin dan halaman harus tetap terbuka. Tidak ada koneksi akun Ajaib/API privat. Sinyal hanya pengingat untuk memeriksa harga; konfirmasi transaksi tetap dilakukan sendiri di aplikasi resmi.</p>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const levels={buyHigh:30500000,buyLow:30000000,tp1:33000000,tp2:35150000,tp3:38000000};
+let permission=false,previousBand="",seen={};
+const fmt=n=>"Rp"+new Intl.NumberFormat("id-ID",{maximumFractionDigits:0}).format(n);
+function log(msg){const t=new Date().toLocaleTimeString("id-ID");$("log").innerHTML="<div>["+t+"] "+msg+"</div>"+$("log").innerHTML;}
+function notify(title,body){if(permission&&"Notification"in window&&Notification.permission==="granted")new Notification(title,{body});}
+function analyze(price){
+ let band=price>levels.buyHigh?"DI ATAS AREA BELI":price>=levels.buyLow?"AREA BELI BERTAHAP":"DI BAWAH AREA BELI";
+ $("marketState").textContent=band+" · "+(price>=levels.tp1?"Harga telah mencapai area TP1 atau lebih.": "Pantau konfirmasi candle dan volume sebelum mengambil keputusan.");
+ $("marketState").className="status "+(band==="AREA BELI BERTAHAP"?"buy":"");
+ if(band==="AREA BELI BERTAHAP"&&previousBand!==band){const m="ETH masuk area pantauan beli "+fmt(levels.buyLow)+"–"+fmt(levels.buyHigh)+". Periksa konfirmasi; bukan order otomatis.";log(m);notify("BEN AI ETH · AREA BELI",m);}
+ previousBand=band;
+ for(const [key,label,target] of [["tp1","TP1",levels.tp1],["tp2","TP2",levels.tp2],["tp3","TP3",levels.tp3]]){
+   if(price>=target&&!seen[key]){seen[key]=true;const m="ETH mencapai "+label+" "+fmt(target)+". Periksa posisi dan konfirmasi jual manual di Ajaib.";log(m);notify("BEN AI ETH · "+label,m);}
+ }
+}
+async function refresh(){
+ try{
+  const r=await fetch("https://indodax.com/api/tickers",{cache:"no-store"});
+  if(!r.ok)throw Error("HTTP "+r.status);
+  const data=await r.json(),t=(data.tickers||data).ethidr,price=Number(t?.last);
+  if(!(price>0))throw Error("Ticker ETH/IDR tidak tersedia");
+  $("price").textContent=fmt(price);$("updated").textContent="Sumber: INDODAX public ticker · "+new Date().toLocaleString("id-ID");
+  analyze(price);
+ }catch(e){$("price").textContent="Data belum tersedia";$("updated").textContent=String(e.message||e);$("marketState").textContent="Periksa koneksi lalu refresh.";}
+}
+$("enable").addEventListener("click",async()=>{if(!("Notification"in window)){alert("Browser tidak mendukung notifikasi.");return;}const p=await Notification.requestPermission();permission=p==="granted";$("enable").textContent=permission?"Notifikasi aktif":"Izin notifikasi belum diberikan";if(permission)log("Izin notifikasi aktif pada browser ini.");});
+$("refresh").addEventListener("click",refresh);
+refresh();setInterval(refresh,60000);
+</script></body></html>
