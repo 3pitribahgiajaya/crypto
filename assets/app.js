@@ -8,19 +8,21 @@ const binanceHosts=["https://api.binance.com","https://api1.binance.com"];
 async function binanceJSON(path){let last;for(const host of binanceHosts){try{return await getJSON(host+path)}catch(e){last=e}}throw last||Error("Market API unavailable")}
 async function loadMarket(){
   $("market").innerHTML='<p class="muted">Memuat harga pasar…</p>';
-  try{
-    const rows=await Promise.all(coins.map(async([name,id,sym,pair])=>{const x=await binanceJSON("/api/v3/ticker/24hr?symbol="+pair);return [id,{usd:Number(x.lastPrice),usd_24h_change:Number(x.priceChangePercent)}]}));
-    market=Object.fromEntries(rows);
-    $("market").innerHTML=coins.map(([name,id,sym])=>{let x=market[id];return x?'<div class="market-row"><div><b>'+name+'</b><small class="muted">'+sym+'</small></div><div class="coin-price">'+usd(x.usd)+'<small class="'+(x.usd_24h_change>=0?"up":"down")+'">'+(x.usd_24h_change>=0?"+":"")+fmt(x.usd_24h_change,2)+'%</small></div></div>':""}).join("");
-    $("marketStatus").textContent="Sumber Binance Spot · pasangan USDT sebagai pendekatan USD; harga indikatif, bukan harga eksekusi.";
-    $("engineStatus").textContent="MARKET DATA ONLINE";
-    await loadSignals();
-  }catch(e){
-    $("market").textContent="Data pasar gagal dimuat. Coba refresh atau periksa koneksi.";
-    $("marketStatus").textContent="Market API tidak dapat dijangkau: "+e.message;
-    $("engineStatus").textContent="DATA UNAVAILABLE";
-    $("signals").textContent="Sinyal ditahan karena data pasar belum tersedia.";
-  }
+  const results=await Promise.all(coins.map(async([name,id,sym,pair])=>{
+    try{
+      const x=await binanceJSON("/api/v3/ticker/24hr?symbol="+pair);
+      return {id,name,sym,price:Number(x.lastPrice),change:Number(x.priceChangePercent)};
+    }catch(e){return {id,name,sym,error:String(e.message||e)}}
+  }));
+  market=Object.fromEntries(results.filter(x=>Number.isFinite(x.price)&&x.price>0).map(x=>[x.id,{usd:x.price,usd_24h_change:x.change}]));
+  $("market").innerHTML=results.map(x=>x.price>0
+    ?'<div class="market-row"><div><b>'+x.name+'</b><small class="muted">'+x.sym+'</small></div><div class="coin-price">'+usd(x.price)+'<small class="'+(x.change>=0?"up":"down")+'">'+(x.change>=0?"+":"")+fmt(x.change,2)+'%</small></div></div>'
+    :'<div class="market-row"><div><b>'+x.name+'</b><small class="muted">'+x.sym+'</small></div><div class="coin-price">Unavailable</div></div>'
+  ).join("");
+  const count=Object.keys(market).length;
+  $("marketStatus").textContent="Binance Spot public data · "+count+"/"+coins.length+" aset tersedia · USDT sebagai pendekatan USD; bukan harga eksekusi.";
+  $("engineStatus").textContent=count?"MARKET DATA "+count+"/"+coins.length:"DATA UNAVAILABLE";
+  await loadSignals();
 }
 function ema(a,p){if(a.length<p)return null;let k=2/(p+1),v=a.slice(0,p).reduce((s,x)=>s+x,0)/p;for(let i=p;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<=p)return null;let g=0,l=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;return 100-100/(1+g/l)}
