@@ -1,4 +1,4 @@
-name: Deploy BEN AI Indodax Worker
+name: Test and Deploy BEN AI Indodax Worker
 on:
   push:
     branches: [main]
@@ -9,7 +9,18 @@ on:
 permissions:
   contents: read
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run automated safety tests
+        working-directory: worker
+        run: npm test
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
