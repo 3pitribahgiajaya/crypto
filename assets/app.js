@@ -24,20 +24,50 @@ async function loadMarket(){
 }
 function ema(a,p){if(a.length<p)return null;let k=2/(p+1),v=a.slice(0,p).reduce((s,x)=>s+x,0)/p;for(let i=p;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<=p)return null;let g=0,l=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;return 100-100/(1+g/l)}
-async function loadSignals(){
-  let html="";
-  for(const [name,id,sym,pair] of coins.slice(0,3)){
-    try{
-      const h=await binanceJSON("/api/v3/klines?symbol="+pair+"&interval=1d&limit=90");
-      const closes=h.map(x=>Number(x[4])).filter(Number.isFinite),e20=ema(closes,20),e50=ema(closes,50),rv=rsi(closes.slice(-16));
-      let signal="HOLD",cls="neutral";
-      if(e20!==null&&e50!==null&&rv!==null){if(e20>e50&&rv>=50&&rv<70){signal="BUY BIAS";cls="up"}else if(e20<e50&&rv<50){signal="SELL BIAS";cls="down"}}
-      html+='<div class="signal-row"><div><b>'+name+'</b><small class="muted">RSI '+(rv===null?"n/a":fmt(rv,1))+' · EMA20 '+(e20===null?"n/a":usd(e20))+' · EMA50 '+(e50===null?"n/a":usd(e50))+'</small></div><strong class="'+cls+'">'+signal+'</strong></div>';
-      if(alertEnabled&&signal!=="HOLD"&&lastSignals[id]!==signal&&Notification.permission==="granted")new Notification("BEN AI · "+sym,{body:signal+" · indikasi teknikal, bukan instruksi transaksi."});
-      lastSignals[id]=signal;
-    }catch(e){html+='<div class="signal-row"><b>'+name+'</b><span class="muted">Historical data unavailable</span></div>'}
+function atr(candles,p=14){
+  if(candles.length<=p)return null;
+  const tr=[];
+  for(let i=1;i<candles.length;i++){
+    const hi=Number(candles[i][2]),lo=Number(candles[i][3]),pc=Number(candles[i-1][4]);
+    tr.push(Math.max(hi-lo,Math.abs(hi-pc),Math.abs(lo-pc)));
   }
-  $("signals").innerHTML=html||"Belum ada sinyal.";
+  return tr.slice(-p).reduce((a,b)=>a+b,0)/p;
+}
+async function loadSignals(){
+  let htmlOut="";
+  for(const [name,id,sym,pair] of coins){
+    try{
+      const [hourly,daily]=await Promise.all([
+        binanceJSON("/api/v3/klines?symbol="+pair+"&interval=1h&limit=100"),
+        binanceJSON("/api/v3/klines?symbol="+pair+"&interval=1d&limit=60")
+      ]);
+      const closes=hourly.map(x=>Number(x[4])).filter(Number.isFinite);
+      const dailyCloses=daily.map(x=>Number(x[4])).filter(Number.isFinite);
+      const e20=ema(closes,20),e50=ema(closes,50),r= rsi(closes,14);
+      const d20=ema(dailyCloses,20),d50=ema(dailyCloses,50);
+      const volatility=atr(hourly,14),price=market[id]?.usd||closes.at(-1);
+      if([e20,e50,r,d20,d50,volatility,price].some(x=>!Number.isFinite(x)||x<=0))throw Error("Insufficient candle data");
+      const trendUp=e20>e50&&d20>d50;
+      const extension=(price-e20)/volatility;
+      const buyNow=trendUp&&r>=50&&r<=65&&price>=e20&&extension<=1.2;
+      const pullback=trendUp&&price>e20&&extension>1.2;
+      let entry=buyNow?price:(trendUp?e20:null);
+      let sl=entry?entry-1.5*volatility:null;
+      let tp=entry?entry+3*volatility:null;
+      const action=buyNow?"BUY SETUP":(pullback?"WAIT · PULLBACK": "WAIT · NO CONFIRMATION");
+      const cls=buyNow?"up":"neutral";
+      const plan=entry
+        ?'<small class="muted">Entry '+(buyNow?"area now":"limit/watch near EMA20")+' · '+usd(entry)+'<br>TP '+usd(tp)+' · SL '+usd(sl)+'<br>Risk/reward target 1:2 · ATR(14) 1H</small>'
+        :'<small class="muted">Belum ada entry valid. Tunggu EMA20 1H > EMA50 1H dan EMA20 harian > EMA50 harian; RSI 1H 50–65.</small>';
+      htmlOut+='<div class="signal-row"><div><b>'+name+' · '+sym+'</b><small class="muted">Harga '+usd(price)+' · RSI '+fmt(r,1)+' · EMA20/50 1H '+(e20>e50?"bullish":"bearish")+' · Daily '+(d20>d50?"bullish":"bearish")+'</small>'+plan+'</div><strong class="'+cls+'">'+action+'</strong></div>';
+      const sig=buyNow?"BUY":action;
+      if(alertEnabled&&buyNow&&lastSignals[id]!=="BUY"&&Notification.permission==="granted")new Notification("BEN AI · "+sym,{body:"BUY setup indikatif. Entry "+usd(entry)+", TP "+usd(tp)+", SL "+usd(sl)+". Periksa spread dan konfirmasi manual."});
+      lastSignals[id]=sig;
+    }catch(e){
+      htmlOut+='<div class="signal-row"><div><b>'+name+' · '+sym+'</b><small class="muted">Sinyal tidak tersedia: '+String(e.message||e)+'</small></div><strong class="neutral">WAIT</strong></div>';
+    }
+  }
+  $("signals").innerHTML=htmlOut||"Belum ada sinyal.";
 }
 async function connectWallet(){if(!window.ethereum){$("walletInfo").textContent="Wallet provider tidak ditemukan. Buka melalui browser DApp MetaMask atau wallet kompatibel.";return}try{let a=await window.ethereum.request({method:"eth_requestAccounts"});if(!a.length)throw Error("Akun tidak dipilih");let p=new ethers.BrowserProvider(window.ethereum),n=await p.getNetwork(),b=await p.getBalance(a[0]);$("walletInfo").textContent="Alamat: "+a[0]+" · "+(chains[n.chainId.toString()]||"Chain "+n.chainId)+" · Native balance: "+Number(ethers.formatEther(b)).toFixed(6);if(chains[n.chainId.toString()])$("chainSelect").value=n.chainId.toString()}catch(e){$("walletInfo").textContent="Koneksi gagal/dibatalkan: "+e.message}}
 async function switchChain(){if(!window.ethereum){$("walletInfo").textContent="Wallet provider tidak ditemukan.";return}let id=$("chainSelect").value;try{await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+Number(id).toString(16)}]});$("walletInfo").textContent="Network dipilih. Hubungkan ulang untuk memperbarui saldo."}catch(e){$("walletInfo").textContent=e.code===4902?"Network belum ditambahkan di wallet. Tambahkan melalui pengaturan wallet resmi.":e.message}}
