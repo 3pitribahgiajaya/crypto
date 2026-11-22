@@ -15,6 +15,13 @@ function authorized(req, env) {
   const h=req.headers.get("Authorization")||"";
   return !!env.BEN_DASH_TOKEN && h === "Bearer "+env.BEN_DASH_TOKEN;
 }
+function expectedApproval(order) {
+  // Exact transaction summary must be explicitly confirmed by the user in the UI.
+  const size = order.type==="MARKET" && order.side==="BUY"
+    ? `IDR ${order.quoteOrderQty}`
+    : `qty ${order.quantity}${order.price ? ` @ ${order.price}` : ""}`;
+  return `SETUJUI ${order.side} ${order.symbol} ${order.type} ${size}`;
+}
 async function privateRequest(env, method, path, params={}) {
   if(!env.INDODAX_API_KEY || !env.INDODAX_API_SECRET) throw new Error("Indodax API secrets belum dipasang di Cloudflare.");
   const p={...params,timestamp:Date.now(),recvWindow:5000};
@@ -35,7 +42,7 @@ export default {
   if(req.method==="OPTIONS") return new Response(null,{headers:cors});
   const u=new URL(req.url);
   try {
-   if(u.pathname==="/health" && req.method==="GET") return json({ok:true,service:"BEN AI INDODAX",mode:env.BEN_LIVE_TRADING_ENABLED==="true"?"LIVE_ARMED":"SAFE_SETUP",liveOrders:env.BEN_LIVE_TRADING_ENABLED==="true",withdrawals:false});
+   if(u.pathname==="/health" && req.method==="GET") return json({ok:true,service:"BEN AI INDODAX",mode:env.BEN_LIVE_TRADING_ENABLED==="true"?"LIVE_ARMED":"SAFE_SETUP",liveOrders:env.BEN_LIVE_TRADING_ENABLED==="true",approvalRequired:true,withdrawals:false});
    if(u.pathname==="/market" && req.method==="GET") {
     const r=await fetch("https://indodax.com/api/tickers",{headers:{Accept:"application/json"}});
     return json(await r.json(),r.status);
@@ -48,7 +55,7 @@ export default {
     return json(await privateRequest(env,"GET","/api/v2/openOrders",params));
    }
    if(u.pathname==="/order" && req.method==="POST") {
-    if(env.BEN_LIVE_TRADING_ENABLED!=="true") return json({error:"LIVE trading is locked. Keep disabled until paper tests, position controls and deployment review are complete."},423);
+    if(env.BEN_LIVE_TRADING_ENABLED!=="true") return json({error:"LIVE trading is locked. Keep disabled until tests and deployment review are complete."},423);
     const b=await req.json();
     const symbol=String(b.symbol||"").toUpperCase(), side=String(b.side||"").toUpperCase(), type=String(b.type||"LIMIT").toUpperCase();
     if(!["BTCIDR","ETHIDR"].includes(symbol) || !["BUY","SELL"].includes(side) || !["LIMIT","MARKET"].includes(type)) return json({error:"Invalid order parameters"},400);
@@ -66,6 +73,10 @@ export default {
       const quantity=Number(b.quantity);
       if(!Number.isFinite(quantity)||quantity<=0||quantity>Number(env.BEN_MAX_ORDER_QTY||0.0001)) return json({error:"Invalid or excessive market SELL quantity"},400);
       order.quantity=String(quantity);
+    }
+    const requiredPhrase=expectedApproval(order);
+    if(b.approvalConfirmed!==true || b.approvalPhrase!==requiredPhrase) {
+      return json({error:"Human approval required. No order was sent to Indodax.",approvalRequired:true,requiredPhrase},428);
     }
     return json(await privateRequest(env,"POST","/api/v2/order",order));
    }
