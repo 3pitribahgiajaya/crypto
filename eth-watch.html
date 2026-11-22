@@ -11,7 +11,7 @@ h1{font-size:clamp(28px,6vw,42px);margin:28px 0 5px}p{color:var(--muted);line-he
 </style></head>
 <body>
 <header class="top"><a class="brand" href="./">← BEN AI</a><span class="pill">ETH/IDR · MONITORING</span></header>
-<h1>Ethereum Watch</h1><p>Harga publik INDODAX untuk pemantauan ETH/IDR. Data bukan harga eksekusi Ajaib.</p>
+<h1>Ethereum Watch</h1><p>Harga publik CoinGecko dengan fallback INDODAX untuk pemantauan ETH/IDR. Data bukan harga eksekusi Ajaib.</p>
 <section class="card"><h2>HARGA ETH/IDR TERKINI</h2><div id="price" class="price">Memuat…</div><div id="updated" class="small">Menunggu data ticker publik</div><div id="marketState" class="status">Menganalisis level harga…</div></section>
 <section class="grid">
  <article class="card"><h2>AREA BELI 1</h2><div class="value buy">Rp30.500.000</div><p>Entry bertahap hanya setelah harga stabil dan ada konfirmasi pantulan.</p></article>
@@ -43,14 +43,24 @@ function analyze(price){
  }
 }
 async function refresh(){
- try{
-  const r=await fetch("https://indodax.com/api/tickers",{cache:"no-store"});
-  if(!r.ok)throw Error("HTTP "+r.status);
-  const data=await r.json(),t=(data.tickers||data).ethidr,price=Number(t?.last);
-  if(!(price>0))throw Error("Ticker ETH/IDR tidak tersedia");
-  $("price").textContent=fmt(price);$("updated").textContent="Sumber: INDODAX public ticker · "+new Date().toLocaleString("id-ID");
-  analyze(price);
- }catch(e){$("price").textContent="Data belum tersedia";$("updated").textContent=String(e.message||e);$("marketState").textContent="Periksa koneksi lalu refresh.";}
+ const sources=[
+  async()=>{const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=idr",{cache:"no-store"});if(!r.ok)throw Error("CoinGecko HTTP "+r.status);const d=await r.json();return {price:Number(d.ethereum?.idr),name:"CoinGecko ETH/IDR"};},
+  async()=>{const r=await fetch("https://indodax.com/api/tickers",{cache:"no-store"});if(!r.ok)throw Error("INDODAX HTTP "+r.status);const d=await r.json(),t=(d.tickers||d).ethidr;return {price:Number(t?.last),name:"INDODAX ETH/IDR"};}
+ ];
+ let errors=[];
+ for(const source of sources){
+  try{
+   const result=await source(),price=result.price;
+   if(!(price>0))throw Error("Harga tidak valid");
+   $("price").textContent=fmt(price);
+   $("updated").textContent="Sumber: "+result.name+" · "+new Date().toLocaleString("id-ID");
+   analyze(price);
+   return;
+  }catch(e){errors.push(String(e.message||e));}
+ }
+ $("price").textContent="Data belum tersedia";
+ $("updated").textContent="Sumber harga gagal: "+errors.join(" / ");
+ $("marketState").textContent="Periksa koneksi internet lalu tekan Refresh harga.";
 }
 $("enable").addEventListener("click",async()=>{if(!("Notification"in window)){alert("Browser tidak mendukung notifikasi.");return;}const p=await Notification.requestPermission();permission=p==="granted";$("enable").textContent=permission?"Notifikasi aktif":"Izin notifikasi belum diberikan";if(permission)log("Izin notifikasi aktif pada browser ini.");});
 $("refresh").addEventListener("click",refresh);
