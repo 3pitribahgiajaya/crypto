@@ -1,0 +1,8 @@
+{
+  "name": "ben-ai-indodax-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
