@@ -24,6 +24,30 @@ async function loadMarket(){
   $("engineStatus").textContent=count?"MARKET DATA "+count+"/"+coins.length:"DATA UNAVAILABLE";
   await loadSignals();
 }
+
+async function loadIndodax(){
+  const target=$("indodaxMarket");
+  if(!target)return;
+  target.innerHTML='<p class="muted">Mengambil ticker publik INDODAX…</p>';
+  try{
+    const data=await getJSON("https://indodax.com/api/tickers");
+    const tickers=data.tickers||data;
+    const rows=[
+      ["Bitcoin","BTC","btcidr"],["Ethereum","ETH","ethidr"],
+      ["Solana","SOL","solidr"],["BNB","BNB","bnbidr"],["Polygon","POL","polidr"]
+    ];
+    target.innerHTML=rows.map(([name,sym,key])=>{
+      const t=tickers[key];
+      if(!t||!Number(t.last))return '<div class="market-row"><div><b>'+name+' · '+sym+'/IDR</b></div><div class="coin-price">Pair tidak tersedia</div></div>';
+      const change=t.change_24h!=null?Number(t.change_24h):null;
+      return '<div class="market-row"><div><b>'+name+'</b><small class="muted">'+sym+'/IDR · INDODAX</small></div><div class="coin-price">Rp '+fmt(Number(t.last),Number(t.last)<1?6:0)+(Number.isFinite(change)?'<small class="'+(change>=0?'up':'down')+'">'+(change>=0?'+':'')+fmt(change,2)+'%</small>':'')+'</div></div>';
+    }).join("");
+    $("indodaxStatus").textContent="Ticker publik INDODAX · data baca-saja · bukan koneksi akun atau order.";
+  }catch(e){
+    target.innerHTML='<p class="muted">Ticker INDODAX tidak dapat dimuat dari browser saat ini. Coba refresh atau periksa koneksi/CORS.</p>';
+    $("indodaxStatus").textContent="Data INDODAX tidak tersedia: "+String(e.message||e);
+  }
+}
 function ema(a,p){if(a.length<p)return null;let k=2/(p+1),v=a.slice(0,p).reduce((s,x)=>s+x,0)/p;for(let i=p;i<a.length;i++)v=a[i]*k+v*(1-k);return v}
 function rsi(a,p=14){if(a.length<=p)return null;let g=0,l=0;for(let i=a.length-p;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}if(l===0)return 100;return 100-100/(1+g/l)}
 function atr(candles,p=14){
@@ -78,7 +102,7 @@ function loadPortfolio(){let arr=[];try{arr=JSON.parse(localStorage.getItem("ben
 function savePosition(){let asset=$("assetName").value.trim().toUpperCase(),avg=+$("avgPrice").value,qty=+$("units").value;if(!/^[A-Z0-9._-]{2,16}$/.test(asset)||!(avg>0&&qty>0)){$("portfolio").textContent="Isi ticker 2–16 karakter, average price dan quantity yang valid.";return}let a=JSON.parse(localStorage.getItem("benai_positions")||"[]");a.push({asset,avg,qty,created:new Date().toISOString()});localStorage.setItem("benai_positions",JSON.stringify(a));loadPortfolio()}
 function initApp(){
   const bind=(id,event,fn)=>{const el=$(id);if(el)el.addEventListener(event,fn)};
-  bind("refreshMarket","click",loadMarket);
+  bind("refreshMarket","click",()=>{loadMarket();loadIndodax()});
   bind("connectWallet","click",connectWallet);
   bind("switchChain","click",switchChain);
   bind("calculate","click",calculate);
@@ -90,6 +114,7 @@ function initApp(){
   });
   loadPortfolio();
   loadMarket();
+  loadIndodax();
   if(window.ethereum){
     window.ethereum.on?.("chainChanged",connectWallet);
     window.ethereum.on?.("accountsChanged",connectWallet);
