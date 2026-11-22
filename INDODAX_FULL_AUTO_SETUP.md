@@ -1,37 +1,33 @@
-# BEN AI — Indodax full-auto build
+# BEN AI — Indodax deployment checklist
 
-## Current safety state
-This repository now contains a Cloudflare Worker backend scaffold for INDODAX Trade API V2. It defaults to SAFE_SETUP: live orders are locked, withdrawals are not implemented, and the dashboard must never hold API secrets.
+The GitHub repository contains a Cloudflare Worker backend scaffold. It defaults to SAFE_SETUP and refuses live orders until explicitly armed. It does not include an autonomous scheduler, TP/SL position supervisor, or persistent order state yet; do not enable live mode.
 
-## Required API key permissions
-Create a dedicated Trade API V2 key at https://indodax.com/trade_api with ONLY:
-- Reading (View Only)
-- Spot Trading (create/cancel orders)
+## GitHub → Cloudflare deployment
+The workflow `.github/workflows/deploy-worker.yml` deploys the Worker on changes under `worker/`. In GitHub repository Settings → Secrets and variables → Actions, add:
+- `CLOUDFLARE_API_TOKEN`: Cloudflare API token with permission to edit Workers Scripts for the target account.
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID.
 
-Do NOT enable IDR or crypto withdrawals. Never paste the key/secret into GitHub, this chat, or the browser dashboard. Save the secret once in a password manager.
+If these secrets are absent, the workflow will fail safely and no deployment occurs.
 
-## Deploy Worker
-From the worker directory:
-1. Install Wrangler: npm install -g wrangler
-2. Authenticate: wrangler login
-3. Deploy: wrangler deploy
-4. Add secrets:
-   - wrangler secret put INDODAX_API_KEY
-   - wrangler secret put INDODAX_API_SECRET
-   - wrangler secret put BEN_DASH_TOKEN
-5. Keep BEN_LIVE_TRADING_ENABLED=false until paper testing is complete.
-6. Set a strong BEN_DASH_TOKEN (at least 32 random characters) and keep it private.
+## Cloudflare Worker secrets
+After deployment, set these using Wrangler from the worker folder:
+- `wrangler secret put INDODAX_API_KEY`
+- `wrangler secret put INDODAX_API_SECRET`
+- `wrangler secret put BEN_DASH_TOKEN`
 
-The Worker uses INDODAX Trade API V2 signed requests (HMAC-SHA256, X-APIKEY and Sign headers). It exposes /health and public /market, and protected /account, /open-orders, and /order routes. /order remains locked unless BEN_LIVE_TRADING_ENABLED is explicitly changed to true. It enforces a symbol allowlist (BTCIDR, ETHIDR), side/type validation, and a max quantity cap.
+Use a unique random dashboard token. Never put these values in source code, GitHub files, or this chat.
 
-## Important deployment boundary
-The GitHub repository can be updated from ChatGPT, but this environment does not have an authenticated Cloudflare deployment action. Therefore committing these files does NOT deploy or modify the existing Cloudflare Worker. Deploy the worker using Wrangler or the Cloudflare dashboard.
+## INDODAX API key
+Create a dedicated Trade API V2 key at https://indodax.com/trade_api with Reading and Spot Trading only. Leave IDR & Crypto Withdrawal disabled. The secret is shown once; store it in a password manager.
 
-## Not yet implemented
-- A persistent strategy scheduler and order/position state store (KV or Durable Object).
-- Automated TP/SL and trailing-stop supervisor.
-- Idempotency/order reconciliation and fee-aware risk sizing.
-- End-to-end paper trading tests against live public market data.
-- Dashboard authentication flow and Worker URL wiring.
+## Current backend behavior
+- `GET /health`: reports safe/live flag without exposing secrets.
+- `GET /market`: public ticker.
+- Protected `GET /account` and `GET /open-orders`.
+- Protected `POST /order`: disabled unless `BEN_LIVE_TRADING_ENABLED=true`; symbol allowlist BTCIDR/ETHIDR; market BUY uses quoteOrderQty (IDR); quantity and price caps are enforced.
+- No withdrawal endpoint exists.
 
-Do not enable live mode until these are implemented and tested. The code currently provides authenticated manual order routing, not unattended autonomous trading.
+## Not production-ready for unattended trading
+Before any live automation, implement and test: durable position/order state (KV or Durable Objects), scheduler, entry filters, fee-aware sizing for the actual IDR 50,000 budget, partial take-profit, stop-loss and trailing-stop supervisor, fill reconciliation, duplicate-order protection, stale-price/spread checks, kill switch, and alerting. A stop order placed only in browser memory is not safe.
+
+Do not arm live orders until these tests pass with small paper simulations and account balances have been verified.
