@@ -3,8 +3,8 @@
 Static GitHub Pages dashboard for market monitoring, rule-based technical indicators, read-only wallet monitoring and manual trade planning.
 
 ## Features
-- Binance public market data for rule-based signals; separate INDODAX public IDR ticker panel for BTC, ETH, SOL, BNB and POL.
-- Experimental rule-based bias using RSI(14), EMA(20), EMA(50) on 30-day market history for BTC, ETH and BNB.
+- INDODAX public OHLC history and ticker data for BTC/IDR and ETH/IDR signal analysis; separate public ticker panel for selected IDR pairs.
+- Experimental INDODAX spot signal engine for BTC/IDR and ETH/IDR: EMA9/21 on 1H, EMA20/50 on 1D, RSI(14), MACD histogram, volume ratio and ATR(14). BUY SETUP, WAIT and SELL/EXIT WARNING are indicators only; SELL warning does not open a short position.
 - Browser notifications while the page is open (not background push).
 - EIP-1193 wallet connection and native balance reads for Ethereum, Polygon, Arbitrum One, Base and BNB Smart Chain.
 - LONG/SHORT risk calculator with maximum configured risk of 5%.
@@ -16,7 +16,7 @@ GitHub Actions deploys the root directory to GitHub Pages. Expected URL: https:/
 
 ## Important limitations
 - Signals are transparent technical heuristics, not machine-learning predictions, guaranteed outcomes, or personalized investment advice.
-- Public market APIs may rate-limit or be delayed.
+- Public INDODAX market APIs may rate-limit, be delayed, or be unavailable from the browser. Candle-derived entry/TP/SL levels are indicative and do not include fees, spread or slippage.
 - Notifications require the page to remain open; no server-side push service is configured.
 - Ajaib account/API integration is not implemented or verified. The journal is manual and local only.
 - Wallet integration requires an injected EIP-1193 provider. Mobile browsers without an injected wallet cannot connect.
