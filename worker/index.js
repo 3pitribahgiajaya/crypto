@@ -44,8 +44,29 @@ export default {
   try {
    if(u.pathname==="/health" && req.method==="GET") return json({ok:true,service:"BEN AI INDODAX",mode:env.BEN_LIVE_TRADING_ENABLED==="true"?"LIVE_ARMED":"SAFE_SETUP",liveOrders:env.BEN_LIVE_TRADING_ENABLED==="true",approvalRequired:true,withdrawals:false});
    if(u.pathname==="/market" && req.method==="GET") {
-    const r=await fetch("https://indodax.com/api/tickers",{headers:{Accept:"application/json"}});
-    return json(await r.json(),r.status);
+    // Use the documented INDODAX Trade API v2 public ticker endpoint.
+    // Restrict to the two supported trading pairs used by BEN AI.
+    const marketUrl = "https://api.indodax.com/api/v2/ticker/24hr?symbols=BTCIDR,ETHIDR";
+    const r = await fetch(marketUrl, {headers:{Accept:"application/json"}});
+    const raw = await r.text();
+    let rows;
+    try { rows = JSON.parse(raw); }
+    catch { throw new Error("Indodax market returned non-JSON response (HTTP "+r.status+")."); }
+    if (!r.ok) return json({error:"Indodax market API error",status:r.status,details:rows},502);
+    const list = Array.isArray(rows) ? rows : (rows && rows.symbol ? [rows] : []);
+    const tickers = {};
+    for (const t of list) {
+      const key = String(t.symbol||"").toLowerCase().replace("idr","_idr");
+      if (!key) continue;
+      tickers[key] = {
+        last: t.lastPrice, buy: t.bidPrice, sell: t.askPrice,
+        high: t.highPrice, low: t.lowPrice,
+        vol_idr: t.quoteVolume, volume: t.volume,
+        priceChangePercent: t.priceChangePercent,
+        server_time: Math.floor(Date.now()/1000)
+      };
+    }
+    return json({tickers,source:"INDODAX_TAPI_V2",updatedAt:new Date().toISOString()});
    }
    if(!authorized(req,env)) return json({error:"Unauthorized"},401);
    if(u.pathname==="/account" && req.method==="GET") return json(await privateRequest(env,"GET","/api/v2/account"));
