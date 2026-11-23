@@ -119,9 +119,9 @@ async function loadSignals(){
   root.innerHTML=results.map(x=>{
     if(x.error)return '<div class="signal-row"><div><b>'+x.label+'</b><small class="muted">Sinyal belum tersedia: '+x.error+'</small></div><strong class="neutral">WAIT</strong></div>';
     const plan=x.entry?'<small class="muted">Entry indikatif '+idr(x.entry)+'<br>TP '+idr(x.tp)+' · SL '+idr(x.sl)+'<br>Rasio target 1:2 · ATR 1H</small>':'<small class="muted">RSI '+fmt(x.r,1)+' · MACD '+(x.hist>0?"positif":"negatif")+' · Volume '+fmt(x.volumeRatio,2)+'× rata-rata 20 candle<br>EMA9/21 1H '+(x.e9>x.e21?"bullish":"bearish")+' · EMA20/50 harian '+(x.d20>x.d50?"bullish":"bearish")+'</small>';
-    return '<div class="signal-row"><div><b>'+x.label+'</b><small class="muted">Harga candle tertutup '+idr(x.price)+' · Confidence '+x.confidence+'% · INDODAX OHLC</small>'+plan+'</div><strong class="'+x.kind+'">'+x.action+'</strong></div>';
+    return '<div class="signal-row"><div><b>'+x.label+'</b><small class="muted">Harga candle tertutup '+idr(x.price)+' · Skor konfirmasi '+x.confidence+'/100 · INDODAX OHLC</small>'+plan+'</div><strong class="'+x.kind+'">'+x.action+'</strong></div>';
   }).join("");
-  $("engineStatus").textContent=results.some(x=>!x.error)?"INDODAX SIGNAL LIVE":"SIGNAL DATA UNAVAILABLE";
+  $("engineStatus").textContent=results.some(x=>!x.error)?"INDODAX MONITORING ON":"SIGNAL DATA UNAVAILABLE";
   for(const x of results){
     if(x.error)continue;
     if(alertEnabled&&x.action==="BUY SETUP"&&lastSignals[x.symbol]!=="BUY"&&Notification.permission==="granted"){
@@ -149,6 +149,7 @@ function initApp(){
   loadPortfolio();
   loadMarket();
   loadIndodax();
+  setInterval(()=>{loadIndodax();loadSignals()},60000);
   if(window.ethereum){
     window.ethereum.on?.("chainChanged",connectWallet);
     window.ethereum.on?.("accountsChanged",connectWallet);
