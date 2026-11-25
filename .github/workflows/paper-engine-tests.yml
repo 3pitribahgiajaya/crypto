@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - "worker/**"
+      - "assets/paper.js"
       - ".github/workflows/paper-engine-tests.yml"
   pull_request:
     paths:
