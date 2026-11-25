@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { evaluatePaperSignal } from "./paper-engine.js";
-const candles=(start=100,step=0.5,n=80)=>Array.from({length:n},(_,i)=>({time:1700000000+i*3600,close:start+i*step,high:start+i*step+1,low:start+i*step-1}));
+const candles=(start=100,step=0.1,n=80)=>Array.from({length:n},(_,i)=>{const close=start+i*step+Math.sin(i/2)*2;return {time:1700000000+i*3600,close,high:close+1.2,low:close-1.2};});
 test("paper engine opens long only on bullish confirmed setup and stays within 50k budget",()=>{
  const r=evaluatePaperSignal({symbol:"BTCIDR",candles:candles(),capital:50000});
  assert.equal(r.decision,"OPEN_LONG");assert.ok(r.position.quantity*r.position.entry<=25000);assert.ok(r.position.stopLoss<r.position.entry);assert.ok(r.position.takeProfit>r.position.entry);
