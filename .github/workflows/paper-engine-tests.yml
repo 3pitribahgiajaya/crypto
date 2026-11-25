@@ -22,3 +22,5 @@ jobs:
           node-version: 22
       - run: npm test
         working-directory: worker
+      - name: Check browser paper dashboard JavaScript
+        run: node --check assets/paper.js
