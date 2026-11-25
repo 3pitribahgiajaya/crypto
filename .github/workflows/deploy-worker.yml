@@ -30,3 +30,24 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           command: deploy
+      - name: Smoke test deployed BEN AI Worker
+        run: |
+          node --input-type=module <<'NODE'
+          const health = await fetch("https://ben-ai-indodax.jesimalango.workers.dev/health").then(r => r.json());
+          if (health.ok !== true || health.liveOrders !== false || health.approvalRequired !== true || health.withdrawals !== false) {
+            throw new Error("Worker health safety state invalid: " + JSON.stringify(health));
+          }
+          const candles = Array.from({length:80}, (_,i) => {
+            const close = 100 + i*0.1 + Math.sin(i/2)*2;
+            return {time:1700000000+i*3600,close,high:close+1.2,low:close-1.2};
+          });
+          const response = await fetch("https://ben-ai-indodax.jesimalango.workers.dev/paper/evaluate", {
+            method:"POST", headers:{"content-type":"application/json"},
+            body:JSON.stringify({symbol:"BTCIDR",candles,capital:50000,riskPct:1,feeRate:0.003})
+          });
+          const paper = await response.json();
+          if (!response.ok || paper.ok !== true || paper.mode !== "PAPER_ONLY" || paper.liveOrders !== false || paper.decision !== "OPEN_LONG") {
+            throw new Error("Paper endpoint smoke test failed: " + JSON.stringify(paper));
+          }
+          console.log("Worker health safety state OK; paper endpoint returned", paper.decision, "with liveOrders=false.");
+          NODE
