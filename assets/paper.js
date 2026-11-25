@@ -27,35 +27,35 @@ async function candles(symbol){
  return data;
 }
 async function evaluate(symbol,label){
- const data=await candles(symbol), closes=data.map(x=>x.close),last=data.at(-1);
- const ema=(a,n)=>{if(a.length<n)return null;let v=a.slice(0,n).reduce((x,y)=>x+y,0)/n,k=2/(n+1);for(let i=n;i<a.length;i++)v=a[i]*k+v*(1-k);return v};
- let gains=0,loss=0;for(let i=closes.length-14;i<closes.length;i++){let d=closes[i]-closes[i-1];if(d>0)gains+=d;else loss-=d}
- const rsi=loss===0?100:100-100/(1+gains/loss);
- const trs=[];for(let i=1;i<data.length;i++){let c=data[i],p=data[i-1];trs.push(Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close)))}
- const atr=trs.slice(-14).reduce((a,b)=>a+b,0)/14,e9=ema(closes,9),e21=ema(closes,21);
- const elabel=symbol==="BTCIDR"?"btc":"eth";$(elabel+"Price").textContent=rupiah(last.close);
- const position=state.positions[symbol];
- if(position){
-  position.lastPrice=last.close;
-  let exit=null,reason="";
-  if(last.low<=position.stopLoss){exit=position.stopLoss;reason="STOP LOSS"}
-  else if(last.high>=position.takeProfit){exit=position.takeProfit;reason="TAKE PROFIT"}
-  if(exit!==null){
-   const gross=(exit-position.entry)*position.quantity,fees=(position.entry+exit)*position.quantity*FEE,pnl=gross-fees;
-   state.cash+=position.entry*position.quantity+pnl;state.realized+=pnl;delete state.positions[symbol];log(label+" CLOSE "+reason+" @ "+rupiah(exit)+" · P/L "+rupiah(pnl));
-   $(elabel+"Signal").textContent="AUTO PAPER: "+reason+" · "+rupiah(pnl);
-  }else $(elabel+"Signal").textContent="HOLD LONG · RSI "+rsi.toFixed(1);
- }else if(e9>e21&&rsi>=50&&rsi<=68&&last.close>=e9){
-  const exposure=Object.values(state.positions).reduce((a,p)=>a+p.entry*p.quantity,0);
-  const budget=Math.min(state.cash,Math.max(0,CAPITAL*0.5-exposure));
-  const stop=last.close-1.5*atr,target=last.close+3*atr,riskBudget=(state.cash+exposure)*0.01;
-  const qty=Math.min(budget/(last.close*(1+FEE)),riskBudget/(last.close-stop));
-  if(qty*last.close>=10000){
-   state.cash-=qty*last.close;state.positions[symbol]={entry:last.close,quantity:qty,stopLoss:stop,takeProfit:target,lastPrice:last.close,openedAt:Date.now()};
-   log(label+" OPEN LONG @ "+rupiah(last.close)+" · Qty "+qty.toFixed(8)+" · TP "+rupiah(target)+" · SL "+rupiah(stop));
-   $(elabel+"Signal").textContent="AUTO PAPER: BUY SETUP · RSI "+rsi.toFixed(1);
-  }else $(elabel+"Signal").textContent="WAIT · modal minimum/exposure belum cukup";
- }else $(elabel+"Signal").textContent=(e9<e21&&rsi<45?"EXIT WARNING":"WAIT")+" · RSI "+rsi.toFixed(1);
+ const data=await candles(symbol), last=data.at(-1), id=symbol==="BTCIDR"?"btc":"eth";
+ $(id+"Price").textContent=rupiah(last.close);
+ const existing=state.positions[symbol];
+ const otherOpen=Object.keys(state.positions).some(k=>k!==symbol);
+ if(!existing&&otherOpen){$(id+"Signal").textContent="WAIT · satu posisi paper aktif, exposure dibatasi";return;}
+ const response=await fetch("https://ben-ai-indodax.jesimalango.workers.dev/paper/evaluate",{
+  method:"POST",headers:{"content-type":"application/json","accept":"application/json"},
+  body:JSON.stringify({symbol,candles:data,capital:CAPITAL,position:existing||null,feeRate:FEE,riskPct:1})
+ });
+ const result=await response.json();
+ if(!response.ok||!result.ok)throw Error(result.error||"Paper backend tidak merespons");
+ if(result.decision==="OPEN_LONG"){
+  const p={...result.position,lastPrice:last.close};
+  const cost=p.entry*p.quantity;
+  if(cost>state.cash)throw Error("Saldo simulasi tidak cukup");
+  state.cash-=cost;state.positions[symbol]=p;
+  log(label+" OPEN LONG @ "+rupiah(p.entry)+" · Qty "+p.quantity.toFixed(8)+" · TP "+rupiah(p.takeProfit)+" · SL "+rupiah(p.stopLoss));
+  $(id+"Signal").textContent="AUTO PAPER BACKEND: BUY SETUP · RSI "+result.rsi.toFixed(1);
+ }else if(result.decision==="CLOSE_LONG"){
+  const p=existing,pnl=Number(result.realizedPnl)||0;
+  state.cash+=p.entry*p.quantity+pnl;state.realized+=pnl;delete state.positions[symbol];
+  log(label+" CLOSE "+result.reason+" @ "+rupiah(result.exitPrice)+" · P/L "+rupiah(pnl));
+  $(id+"Signal").textContent="AUTO PAPER BACKEND: "+result.reason+" · "+rupiah(pnl);
+ }else if(result.decision==="HOLD_LONG"){
+  existing.lastPrice=last.close;
+  $(id+"Signal").textContent="HOLD LONG · RSI "+result.rsi.toFixed(1);
+ }else{
+  $(id+"Signal").textContent=result.decision+" · RSI "+result.rsi.toFixed(1)+" · "+result.reason;
+ }
 }
 async function tick(){
  if(busy)return;busy=true;
