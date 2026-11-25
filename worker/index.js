@@ -1,3 +1,4 @@
+import { evaluatePaperSignal } from "./paper-engine.js";
 const cors = {
   "Access-Control-Allow-Origin": "https://3pitribahgiajaya.github.io",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -43,6 +44,19 @@ export default {
   const u=new URL(req.url);
   try {
    if(u.pathname==="/health" && req.method==="GET") return json({ok:true,service:"BEN AI INDODAX",mode:env.BEN_LIVE_TRADING_ENABLED==="true"?"LIVE_ARMED":"SAFE_SETUP",liveOrders:env.BEN_LIVE_TRADING_ENABLED==="true",approvalRequired:true,withdrawals:false});
+   if(u.pathname==="/paper/evaluate" && req.method==="POST") {
+    // Paper-only evaluation. This endpoint cannot read balances or place exchange orders.
+    const b=await req.json();
+    const result=evaluatePaperSignal({
+      symbol:String(b.symbol||"").toUpperCase(),
+      candles:b.candles,
+      capital:Number(b.capital||50000),
+      position:b.position||null,
+      feeRate:Number(b.feeRate??0.003),
+      riskPct:Number(b.riskPct??1)
+    });
+    return json({ok:true,mode:"PAPER_ONLY",liveOrders:false,withdrawals:false,...result});
+   }
    if(u.pathname==="/market" && req.method==="GET") {
     // Use the documented INDODAX Trade API v2 public ticker endpoint.
     // Restrict to the two supported trading pairs used by BEN AI.
