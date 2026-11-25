@@ -59,7 +59,7 @@ async function evaluate(symbol,label){
 }
 async function tick(){
  if(busy)return;busy=true;
- try{await Promise.all([evaluate("BTCIDR","BTC/IDR"),evaluate("ETHIDR","ETH/IDR")]);$("status").textContent="Pemeriksaan terakhir: "+new Date().toLocaleTimeString("id-ID")+" · candle tertutup INDODAX";save();}
+ try{await evaluate("BTCIDR","BTC/IDR");await evaluate("ETHIDR","ETH/IDR");$("status").textContent="Pemeriksaan terakhir: "+new Date().toLocaleTimeString("id-ID")+" · candle tertutup INDODAX";save();}
  catch(e){$("status").textContent="Data belum tersedia: "+e.message+" · mencoba lagi otomatis.";}
  finally{busy=false;}
 }
